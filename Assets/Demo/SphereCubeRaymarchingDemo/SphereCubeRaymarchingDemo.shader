@@ -1,7 +1,7 @@
 ﻿//知识点1： SDF 
 //知识点2： Distance Function
 
-Shader "Custom/Raymarching"
+Shader "Custom/SphereCubeRaymarchingDemo"
 {
     Properties
 	{
@@ -38,6 +38,12 @@ Shader "Custom/Raymarching"
                 float part1 = min( max(d.x, max(d.y,d.z)) , 0.0);   //在立方体外侧，绝对返回0 ; 在内侧会返回一个负值，代表点最小点到面的距离
                 float part2 = length(max(d,0.0));   // 如果p+在立方体外侧，将其坍缩到立方体表面，然后计算 length c->p+，是一个正值 ; 在内侧会返回 0    
                 return  part1 + part2;  
+            }
+            
+            float sdTorus( float3 p, float2 t )
+            {
+                float2 q = float2(length(p.xz)-t.x,p.y);
+                return length(q)-t.y;
             }
             
             //Distance Functions ----------------------------------------------
@@ -82,12 +88,17 @@ Shader "Custom/Raymarching"
                 return min(Sphere,Box);;
             }
             
+            float DistanceFunction_Torus( fixed3 p ) {
+                return sdTorus(p,float2(20.0,1.5));
+            }
+            
             //Raymarching Function --------------------------------------------
             //#define _DistanceFunction DistanceFunction_Sphere
             //#define _DistanceFunction DistanceFunction_Box
-            #define _DistanceFunction DistanceFunction_BoxSubSphere
-            #define _DistanceFunction DistanceFunction_BoxCrossSphere
-            #define _DistanceFunction DistanceFunction_BoxUnionSphere
+            //#define _DistanceFunction DistanceFunction_BoxSubSphere
+            //#define _DistanceFunction DistanceFunction_BoxCrossSphere
+            //#define _DistanceFunction DistanceFunction_BoxUnionSphere
+            #define _DistanceFunction DistanceFunction_Torus
             
             fixed4 raymarch (float3 position, float3 direction)
             {

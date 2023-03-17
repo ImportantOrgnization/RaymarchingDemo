@@ -20,7 +20,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Raymarching
+  m_Name: SphereCubeRaymarchingDemo
   m_Shader: {fileID: 4800000, guid: 4207f334defcdec41b19796c5114ec9e, type: 3}
   m_ShaderKeywords: 
   m_LightmapFlags: 4
