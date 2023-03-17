@@ -1,5 +1,8 @@
 ﻿//https://iquilezles.org/articles/distfunctions/
 //上述网址提供了众多 SDF 方法
+
+//本案例的参考网址
+//https://www.gamedeveloper.com/programming/how-to-get-stunning-graphics-with-raymarching-in-games
 Shader "Custom/TorusWithLighting"
 {
     Properties
