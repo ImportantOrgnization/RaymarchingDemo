@@ -22,7 +22,7 @@ Shader "Custom/SphereCubeRaymarchingDemo"
 
             #include "UnityCG.cginc"
             float _Size;
-            #define STEPS 34  
+            #define STEPS 128  
              
             //SDF : signed distance field -------------------------------------
             //Sphere - signed - exact //center = float3(0,0,0) ; radius = s;
@@ -47,6 +47,7 @@ Shader "Custom/SphereCubeRaymarchingDemo"
             }
             
             //Distance Functions ----------------------------------------------
+            //下面使用该旋转，实际上旋转的是片面，而不是物体，我们看到物体在转，是以为平面转的时候，物体投影到平面的形状变化了
             float2x2 rotate(float a) { 
                 return float2x2( cos(a), sin(a), -sin(a), cos(a) );
             }
@@ -93,12 +94,12 @@ Shader "Custom/SphereCubeRaymarchingDemo"
             }
             
             //Raymarching Function --------------------------------------------
-            //#define _DistanceFunction DistanceFunction_Sphere
+            #define _DistanceFunction DistanceFunction_Sphere
             //#define _DistanceFunction DistanceFunction_Box
             //#define _DistanceFunction DistanceFunction_BoxSubSphere
             //#define _DistanceFunction DistanceFunction_BoxCrossSphere
             //#define _DistanceFunction DistanceFunction_BoxUnionSphere
-            #define _DistanceFunction DistanceFunction_Torus
+            //#define _DistanceFunction DistanceFunction_Torus
             
             fixed4 raymarch (float3 position, float3 direction)
             {
