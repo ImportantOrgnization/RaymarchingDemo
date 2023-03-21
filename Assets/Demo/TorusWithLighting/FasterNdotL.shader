@@ -1,9 +1,13 @@
-﻿//https://iquilezles.org/articles/distfunctions/
-//上述网址提供了众多 SDF 方法
+﻿//微积分环境下更快的 n dot l
+//https://iquilezles.org/articles/derivative/
+//该文章的关键句在这里
+//Now, if x was the point in space we are shading/lighting, and f was out SDF or cloud density field, 
+//then f(x) would be the density at that point we are shading, 
+//and ∇f(x) the gradient (or 'normal'). At the same time, if v was the light direction,
+//then the right side of the equation ∇f(x)⋅v/|v| would be nothing but our regular N⋅L lambertian lighting... 
+//which according to the equation is equal to the directional derivative of the field taken in the direction of the light (left side of the equation)!
 
-//本案例的参考网址
-//https://www.gamedeveloper.com/programming/how-to-get-stunning-graphics-with-raymarching-in-games
-Shader "Custom/TorusWithLighting"
+Shader "Custom/FasterNdotL"
 {
     Properties
     {
@@ -41,40 +45,13 @@ Shader "Custom/TorusWithLighting"
 			{
 				return sdTorus(p,float2(1.0,0.5));
 			}
-            
-            float ambient_occlusion( float3 pos, float3 nor )
-			{
-				float occ = 0.0;
-				float sca = 1.0;
-				for( int i=0; i<25; i++ )
-				{
-					float hr = 0.01 + 0.03*float(i);
-					float3 aopos =  nor * hr + pos;
-					float dd = DistanceFunction( aopos );
-					occ += -(dd-hr)*sca;
-					sca *= 0.95;
-				}
-				return clamp( 1.0 - occ, 0.0, 1.0 );    
-			}	
-            
-            float3 set_normal (float3 p)
-			{
-				float3 x = float3 (0.001,0.00,0.00);
-				float3 y = float3 (0.00,0.001,0.00);
-				float3 z = float3 (0.00,0.00,0.001);
-				//如果斜率表示的是球面点在xyz三轴上的变化率
-				//那么法线就是一个点离开球面时在xyz三轴上的变化率,具体的物理涵义可以用下面的微分表示！
-				return normalize(float3(DistanceFunction(p+x)-DistanceFunction(p-x), DistanceFunction(p+y)-DistanceFunction(p-y), DistanceFunction(p+z)-DistanceFunction(p-z))); 
-			}
 			
-			float3 lighting (float3 p)
+			float3 lighting (float3 p,float var_p )
 			{
+                float3 eps = 0.001;
 				float3 l = _WorldSpaceLightPos0.xyz;
-				float3 n = set_normal(p);
-				//return n; 查看法线
-				float ao = ambient_occlusion(p,n);
-				//return ao;
-				return (max(dot(n,l),0.0) )*ao;
+				float3 diffuse = clamp( (DistanceFunction(p+ eps * l) - var_p)/eps ,0,1).xxx;
+				return diffuse;
 			}
 				
 			//ro -> ray orig , rd -> ray direction
@@ -87,13 +64,13 @@ Shader "Custom/TorusWithLighting"
 					    if (distance(ro,ray*rd)>250) break;
 					}
 					if (ray < _MinDistance){ 
-					    return float4 (lighting(ro),1.0); 
+					    return float4 (lighting(ro,ray),1.0); 
                     }
 					else{ 
 					    ro+=ray*rd;
 					} 
 				}
-				return float4 (0.0,1.0,0.0,1.0);
+				return float4 (1.0,0.0,0.0,1.0);
 			}
 			
             custom_type vertex_shader (float4 vertex : POSITION)
