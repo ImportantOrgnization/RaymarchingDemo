@@ -20,8 +20,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: NaturalNoise
-  m_Shader: {fileID: 4800000, guid: 3d79803f9ced9cb49910b184274370a8, type: 3}
+  m_Name: RaymarchingNaturalNoise
+  m_Shader: {fileID: 4800000, guid: ced360e5d13388f4db61502f60f98b67, type: 3}
   m_ShaderKeywords: 
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
@@ -73,22 +73,22 @@ Material:
     - _DstBlend: 0
     - _EnvironmentReflections: 1
     - _F: 2.62
-    - _FbmdIteration: 12.27
+    - _FbmdIteration: 9
     - _GlossMapScale: 0
     - _Glossiness: 0
     - _GlossyReflections: 0
-    - _InitHeight: 0.37
-    - _InitWeight: 1.09
-    - _IteratedNormalScale: 1.88
-    - _IteratedWeightScale: 0.55
+    - _InitHeight: 0.47
+    - _InitWeight: 0.7
+    - _IteratedNormalScale: 2
+    - _IteratedWeightScale: 0.48
     - _MapFix1: 0.37
     - _MapFix2: 0.7
     - _Metallic: 0
     - _NormalScale: 1.22
     - _OcclusionStrength: 1
-    - _PositionScale: 0.28
+    - _PositionScale: 0.55
     - _QueueOffset: 0
-    - _RayMarchingCnt: 55
+    - _RayMarchingCnt: 57.59
     - _RayThreshold: 0.01
     - _ReceiveShadows: 1
     - _Scale: 3.75
