@@ -5,26 +5,33 @@ Shader "Custom/Cloud"
 {
     Properties
 	{
-		_Size("Size",Float) = 15
-		
+        _StepCnt("_StepCnt",int ) = 100
+
 		_Color1("_Color1",color) = (0.6,0.71,0.75)
 		_BackgroundSupplement("_BackgroundSupplement",Range(0,0.1)) = 0.075
 		
 		_Color2("_Color2",color) = (1.0,0.5,1.0)
         _YMultiplier("_YMultiplier",Range(0,1)) = 0.2
 
-		_Color3("_Color3",color) = (1.0,0.6,0.1)
+		_SunLightColor("_SunLightColor",color) = (1.0,0.6,0.1)
 		_SunMultiplier("_SunMultiplier",Range(0,1)) = 0.2
 		_SunPow("_SunPow",Range(0,20)) = 8
 		
-		iChannel0("iChannel0",2d) = "white"{}
-		iChannel1("iChannel1",2d) = "white"{}
+        _AmbientColor("_AmbientColor",color) = (0.0,0.0,0,1)
+		_HighDensityCloudC("_HighDensityCloudC",color) = (1.0,0.95,0.8,1)
+		_LowDensityCloudC("_LowDensityCloudC",color) = (0.25,0.3,0.35,1)
 		
 		
-        _Color4("_Color4",color) = (0.91,0.98,1.05,1)
-		_Color5("_Color5",color) = (1.0,0.95,0.8,1)
-		_Color6("_Color6",color) = (0.25,0.3,0.35,1)
-		_Color7("_Color7",color) = (1.0,0.6,0.1)
+		_WindDir("_WindDir",Vector) = (1,0,1)
+		
+		_FBMSamplerScale("_FBMSamplerScale",float ) = 2.02
+		_MinStepDist("_MinStepDist",float ) = 0.06
+		_StepForwardPercentage("_StepForwardPercentage",float ) = 0.05
+		_CloudHeight("_CloudHeight",float ) = -0.5
+		_CloudScatter("_CloudScatter",float ) = 1.75
+		
+		
+		_AccumulateAttenuation("_AccumulateAttenuation",Range(0,1)) = 0.5
 	}
     SubShader
     {
@@ -48,16 +55,23 @@ Shader "Custom/Cloud"
             float3 _Color2;
             float _YMultiplier;
             
-            float3 _Color3;
+            float3 _SunLightColor;
             float _SunMultiplier;
             float _SunPow;
             
-            sampler2D iChannel0;
-            sampler2D iChannel1;
-            float3 _Color4;
-            float3 _Color5;
-            float3 _Color6;
-            float3 _Color7;
+            float3 _AmbientColor;
+            float3 _HighDensityCloudC;
+            float3 _LowDensityCloudC;
+            
+            float _FBMSamplerScale;
+            float _MinStepDist;
+            float _StepForwardPercentage;
+            float _CloudHeight;
+            float _CloudScatter;
+            
+            float _AccumulateAttenuation;
+            
+            int _StepCnt;
 
             struct appdata
             {
@@ -71,74 +85,94 @@ Shader "Custom/Cloud"
                 float4 uv : TEXCOORD2;
             };
             
-            
-            // 0: one 3d texture lookup
-            // 1: two 2d texture lookups with hardware interpolation
-            // 2: two 2d texture lookups with software interpolation
-            #define NOISE_METHOD 1
-            
-            // 0: no LOD
-            // 1: yes LOD
-            #define USE_LOD 1
-            
-            // 0: sunset look
-            // 1: bright look
-            #define LOOK 1
-            
-            
-            float noise( in float3 worldPos )
+            float hash(float3 p)  // replace this by something better
             {
-                float3 p = floor(worldPos);
-                float3 f = frac(worldPos);
-                f = f*f*(3.0-2.0*f);
+                p  = 50.0*frac( p*0.3183099 + float3(0.71,0.113,0.419));
+                return -1.0+2.0*frac( p.x*p.y*p.z*(p.x+p.y+p.z) );
+            }
             
-                float2 uv = (p.xy+float2(37.0,239.0)*p.z) + f.xy;
-                float2 rg = tex2Dlod(iChannel0,float4( (uv+0.5)/256.0,0,0)).yx;
-                return lerp( rg.x, rg.y, f.z )*2.0-1.0;
+            // return value noise (in x) and its derivatives (in yzw)
+            float4 noised( in float3 positionWS )
+            {
+                float3 i = floor(positionWS);
+                float3 w = frac(positionWS);
+                
+            #if 1
+                // quintic interpolation
+                float3 u = w*w*w*(w*(w*6.0-15.0)+10.0);
+                float3 du = 30.0*w*w*(w*(w-2.0)+1.0);
+            #else
+                // cubic interpolation
+                float3 u = w*w*(3.0-2.0*w);
+                float3 du = 6.0*w*(1.0-w);
+            #endif    
+                
+                
+                float a = hash(i+float3(0.0,0.0,0.0));
+                float b = hash(i+float3(1.0,0.0,0.0));
+                float c = hash(i+float3(0.0,1.0,0.0));
+                float d = hash(i+float3(1.0,1.0,0.0));
+                float e = hash(i+float3(0.0,0.0,1.0));
+                float f = hash(i+float3(1.0,0.0,1.0));
+                float g = hash(i+float3(0.0,1.0,1.0));
+                float h = hash(i+float3(1.0,1.0,1.0));
+                
+                float k0 =   a;
+                float k1 =   b - a;
+                float k2 =   c - a;
+                float k3 =   e - a;
+                float k4 =   a - b - c + d;
+                float k5 =   a - c - e + g;
+                float k6 =   a - b - e + f;
+                float k7 = - a + b + c - d + e - f - g + h;
+            
+                return float4( k0 + k1*u.x + k2*u.y + k3*u.z + k4*u.x*u.y + k5*u.y*u.z + k6*u.z*u.x + k7*u.x*u.y*u.z, 
+                             du * float3( k1 + k4*u.y + k6*u.z + k7*u.y*u.z,
+                                        k2 + k5*u.z + k4*u.x + k7*u.z*u.x,
+                                        k3 + k6*u.x + k5*u.y + k7*u.x*u.y ) );
+            }   
               
-            }
-            
-            
-            float map5( in float3 p )
-            {    
-                float3 q = p - float3(0.0,0.1,1.0)*_Time;    
-                float f;
-                f  = 0.50000*noise( q ); q = q*2.02;    
-                f += 0.25000*noise( q ); q = q*2.03;    
-                f += 0.12500*noise( q ); q = q*2.01;    
-                f += 0.06250*noise( q ); q = q*2.02;    
-                f += 0.03125*noise( q );    
-                return clamp( 1.5 - p.y - 2.0 + 1.75*f, 0.0, 1.0 );
-            }
+            float3 _WindDir;
+
             float map4( in float3 p )
             {    
                 float3 q = p - float3(0.0,0.1,1.0)*_Time;    
                 float f;
-                f  = 0.50000*noise( q ); q = q*2.02;    
-                f += 0.25000*noise( q ); q = q*2.03;    
-                f += 0.12500*noise( q ); q = q*2.01;   
-                f += 0.06250*noise( q );    
+                f  = 0.50000*noised( q ); q = q*2.02;    
+                f += 0.25000*noised( q ); q = q*2.03;    
+                f += 0.12500*noised( q ); q = q*2.01;   
+                f += 0.06250*noised( q );    
                 return clamp( 1.5 - p.y - 2.0 + 1.75*f, 0.0, 1.0 );
             }
             float map3( in float3 p )
             {
                 float3 q = p - float3(0.0,0.1,1.0)*_Time;    
                 float f;
-                f  = 0.50000*noise( q ); q = q*2.02;    
-                f += 0.25000*noise( q ); q = q*2.03;    f += 0.12500*noise( q );    
+                f  = 0.50000*noised( q ); q = q*2.02;    
+                f += 0.25000*noised( q ); q = q*2.03;    f += 0.12500*noise( q );    
                 return clamp( 1.5 - p.y - 2.0 + 1.75*f, 0.0, 1.0 );
             }
             float map2( in float3 p )
             {    
                 float3 q = p - float3(0.0,0.1,1.0)*_Time;    
                 float f;
-                f  = 0.50000*noise( q ); 
+                f  = 0.50000*noised( q ); 
                 q = q*2.02;    f += 0.25000*noise( q );;    
                 return clamp( 1.5 - p.y - 2.0 + 1.75*f, 0.0, 1.0 );
             }
             
-            const float3 sundir = float3(-0.7071,0.0,-0.7071);
-            
+            float map5( in float3 p )
+            {    
+                float3 q = p - _WindDir*_Time.y;    
+                float f;
+                f  = 0.50000*noised( q ); q = q*_FBMSamplerScale;    
+                f += 0.25000*noised( q ); q = q*_FBMSamplerScale;    
+                f += 0.12500*noised( q ); q = q*_FBMSamplerScale;    
+                f += 0.06250*noised( q ); q = q*_FBMSamplerScale;    
+                f += 0.03125*noised( q );    
+                return clamp(  - p.y + _CloudHeight + _CloudScatter *f, 0.0, 1.0 );
+            }
+           
             float mapWithLod(int lod,float3 pos){
                 if(lod == 2)
                     return map2(pos);
@@ -157,7 +191,6 @@ Shader "Custom/Cloud"
                 float t;  
             };
             
-            //#define MARCH(STEPS,MAPLOD) for(int i=0; i<STEPS; i++) { float3 pos = ro + t*rd; if( pos.y<-3.0 || pos.y>2.0 || sum.a>0.99 ) break; float den = MAPLOD( pos ); if( den>0.01 ) { float dif = clamp((den - MAPLOD(pos+0.3*sundir))/0.6, 0.0, 1.0 ); float3  lin = float3(1.0,0.6,0.3)*dif+float3(0.91,0.98,1.05); float4  col = float4( mix( float3(1.0,0.95,0.8), float3(0.25,0.3,0.35), den ), den ); col.xyz *= lin; col.xyz = mix( col.xyz, bgcol, 1.0-exp(-0.003*t*t) ); col.w *= 0.4; col.rgb *= col.a; sum += col*(1.0-sum.a); } t += max(0.06,0.05*t); }
             MarchResult MARCH(int steps,int lod,float3 ro,float3 rd,float3 bgcol,float4 sum,float t){ 
                 MarchResult result;
                 for(int i=0; i<steps; i++) {
@@ -167,18 +200,27 @@ Shader "Custom/Cloud"
                     float den = mapWithLod(lod, pos );
                     
                     if( den>0.01 ) {
-                        float ndotL = clamp((den - mapWithLod(lod,pos+0.3*_WorldSpaceLightPos0))/0.6, 0.0, 1.0 ); 
-                        float4  col = float4( lerp( _Color5.rgb, _Color6.rgb, den ), den );
-
-                        //float3  lit = _Color3*ndotL+ _Color4.rgb; 
-                        //col.xyz *= lit; 
-
-                        col.xyz = lerp( col.xyz, bgcol, 1.0-exp(-0.003*t*t) );  // y = 1.0 - e^(-0.003 * t*t) 是一个顶点为 0，1 类似于倒挂的抛物线，且经过 1，0 点
-                        col.w *= 0.4; 
-                        col.rgb *= col.a; 
-                        sum += col*(1.0-sum.a);
+                         
+                        float4  col = float4( lerp( _HighDensityCloudC.rgb, _LowDensityCloudC.rgb, den ), den );
+                        
+                        //计算光照
+                        float ndotL = clamp((den - mapWithLod(lod,pos+0.2*_WorldSpaceLightPos0))/0.6, 0.0, 1.0 );
+                        float3  lit = _SunLightColor*ndotL+ _AmbientColor.rgb; 
+                        col.xyz *= lit; 
+                        //和背景混合
+                        //col.xyz = lerp( col.xyz, bgcol, 1.0-exp(-0.003*t*t) );  // y = 1.0 - e^(-0.003 * t*t) 是一个顶点为 0，1 类似于倒挂的抛物线，且经过 1，0 点
+                        
+                        //对颜色值进行衰减
+                        col.a *= _AccumulateAttenuation; 
+                        //col.rgb *= col.a;
+                        
+                        sum += col*(1.0-sum.a); //越到后面比例越小，但还是不断累积
+                        
+                        //sum += float4(ndotL,ndotL,ndotL,1- sum.a);
+                        //sum += col;
+                        
                     } 
-                    t += max(0.06,0.05*t); 
+                    t += max(_MinStepDist,_StepForwardPercentage*t); 
                 }
                 result.sum = sum;
                 result.t = t;
@@ -205,7 +247,7 @@ Shader "Custom/Cloud"
                 //大气
                 float sun = clamp(dot(_WorldSpaceLightPos0,rd),0,1);
                 float3 bgcol = _Color1 - rd.y*_YMultiplier*_Color2 + _BackgroundSupplement;
-                bgcol += _SunMultiplier*_Color3*pow( sun, _SunPow );  
+                bgcol += _SunMultiplier*_SunLightColor*pow( sun, _SunPow );  
                 
                 bgcol = 0;
                 
@@ -214,23 +256,19 @@ Shader "Custom/Cloud"
                 i.uv /= i.uv.w;
                 
                 //raymarch
-                float4 sum = 0;    
-                float t = 0.05 * tex2Dlod( iChannel1,float4(i.uv.xy,0,0)).x;
-                
                 //return float4(t.xxx,1);
                 MarchResult result;
-                result.sum = sum;
-                result.t = t;
-                result = MARCH(40,5,ro,rd,bgcol,result.sum,result.t);    
+                result.sum = 0;
+                result.t = 0;
+                result = MARCH(_StepCnt,5,ro,rd,bgcol,result.sum,result.t);    
                 //result = MARCH(40,4,ro,rd,bgcol,result.sum,result.t);    
                 //result = MARCH(30,3,ro,rd,bgcol,result.sum,result.t);    
                 //result = MARCH(30,2,ro,rd,bgcol,result.sum,result.t);    
                 float4 res = clamp( result.sum, 0.0, 1.0 );
                 return res;
-
                 
-                bgcol = bgcol*(1.0-res.w) + res.xyz;       
-                
+                //bgcol = bgcol*(1.0-res.w) + res.xyz;       
+                //return float4(lerp(bgcol.xyz,res.xyz,res.w),1);
                 
             }
             

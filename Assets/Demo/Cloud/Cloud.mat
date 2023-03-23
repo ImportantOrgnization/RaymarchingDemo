@@ -33,26 +33,45 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - iChannel0:
-        m_Texture: {fileID: 2800000, guid: 7237f4541c918054d8eedd6117b8ba68, type: 3}
+        m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - iChannel1:
-        m_Texture: {fileID: 2800000, guid: 8ae181447f08a8043a6b300eb50c2d92, type: 3}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - iChannel2:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Floats:
-    - _BackgroundSupplement: 0.035
-    - _RayDirYMultiplier: 0.34
-    - _Size: 15
-    - _SunMultiplier: 0.56
-    - _SunPow: 7.6
-    - _YMultiplier: 0.43
+    - _AccumulateAttenuation: 0.4
+    - _BackgroundSupplement: 0.059
+    - _CloudHeight: 0.59
+    - _CloudScatter: 1.03
+    - _FBMSamplerScale: 2.23
+    - _MinStepDist: 0.06
+    - _Step: 80
+    - _StepCnt: 90
+    - _StepForwardPercentage: 0.01
+    - _SunMultiplier: 0.2
+    - _SunPow: 8
+    - _Unknow1: 0.05
+    - _Unknow2: 2.02
+    - _Unknow3: 256
+    - _Unknow4: 0.06
+    - _Unknow5: 0.05
+    - _Unknow6: 0
+    - _Unknow7: 2.47
+    - _YMultiplier: 0.2
     m_Colors:
+    - _AmbientColor: {r: 0.11320752, g: 0.11320752, b: 0.11320752, a: 1}
+    - _CloudColor: {r: 1, g: 1, b: 1, a: 1}
     - _Color1: {r: 0.6, g: 0.71, b: 0.75, a: 1}
     - _Color2: {r: 1, g: 0.5, b: 1, a: 1}
-    - _Color3: {r: 1, g: 0.6, b: 0.09999997, a: 1}
+    - _Color3: {r: 1, g: 0.46321043, b: 0, a: 1}
+    - _Color4: {r: 0, g: 0, b: 0, a: 1}
+    - _Color7: {r: 1, g: 0.6, b: 0.09999997, a: 1}
+    - _GroundColor: {r: 0.4245283, g: 0.4245283, b: 0.4245283, a: 1}
+    - _HighDensityCloudC: {r: 1, g: 1, b: 1, a: 1}
+    - _LowDensityCloudC: {r: 0.36071554, g: 0.37776077, b: 0.3962264, a: 1}
+    - _SunLightColor: {r: 0.7735849, g: 0.4396451, b: 0.018244924, a: 1}
+    - _WindDir: {r: 0.5, g: 0, b: 0.5, a: 1}
+    - _ZTextureCoordsMultiplier: {r: 39, g: 239, b: 0, a: 0}
   m_BuildTextureStacks: []
