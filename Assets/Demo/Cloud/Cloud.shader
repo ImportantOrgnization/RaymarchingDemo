@@ -24,6 +24,7 @@ Shader "Custom/Cloud"
 		
 		_WindDir("_WindDir",Vector) = (1,0,1)
 		_Speed("_Speed",float) = 1
+		_CloudSize("_CloudSize",float) = 1
 		
 		_FBMSamplerScale("_FBMSamplerScale",float ) = 2.02
         
@@ -33,9 +34,17 @@ Shader "Custom/Cloud"
         _MinStepDist3("_MinStepDist3",float ) = 0.06
 		_StepForwardPercentage3("_StepForwardPercentage3",float ) = 0.05
 		
-		_CloudHeight("_CloudHeight",float ) = -0.5
-		_CloudScatter("_CloudScatter",float ) = 1.75
+		_CloudBottom("_CloudBottom",float) = 0
+		_CloudTop("_CloudTop",float) = 1
+		_RangePurity("_RangePurity",Range(0,2)) = 1             //高度范围的纯度，越高，越界的云越少
+		_CloudScatter("_CloudScatter",Range(0,2) ) = 1.75       //云在纵向上的分散能力
 		
+		
+		_FBM1("_FBM1",float) = 0.5
+		_FBM2("_FBM2",float) = 0.25
+		_FBM3("_FBM3",float) = 0.125
+		_FBM4("_FBM4",float) = 0.0625
+		_FBM5("_FBM5",float) = 0.0317
 		
 		_AccumulateAttenuation("_AccumulateAttenuation",Range(0,1)) = 0.5
 	}
@@ -74,12 +83,18 @@ Shader "Custom/Cloud"
             float _StepForwardPercentage5;
             float _MinStepDist3;
             float _StepForwardPercentage3;
-            float _CloudHeight;
             float _CloudScatter;
             
             float _AccumulateAttenuation;
             
             int _StepCnt;
+            
+            float _FBM1;
+            float _FBM2;
+            float _FBM3;
+            float _FBM4;
+            float _FBM5;
+            
 
             struct appdata
             {
@@ -142,10 +157,20 @@ Shader "Custom/Cloud"
               
             float3 _WindDir;
             float _Speed;
+            float _CloudSize;
             float3 GetWind(){
                 return _WindDir * _Speed;
             }
             
+            float _CloudBottom;
+            float _CloudTop;
+            float _RangePurity;
+            float GetCloudHeightDensity(float3 positionWS){
+                float y = positionWS.y;
+                float y1 = max(-_RangePurity,y - _CloudBottom);
+                float y2 = max(-_RangePurity,_CloudTop - y);
+                return min(y1,y2);   
+            }
 
             struct MarchResult {
                 float4 sum;
@@ -154,14 +179,15 @@ Shader "Custom/Cloud"
             
             float map5(in float3 p )
             {    
-                float3 q = p - GetWind()*_Time.y;    
+                float3 q = p - GetWind()*_Time.y;
+                q *= _CloudSize;    
                 float f;
-                f  = 0.50000*noised( q ); q = q*_FBMSamplerScale;    
-                f += 0.25000*noised( q ); q = q*_FBMSamplerScale;    
-                f += 0.12500*noised( q ); q = q*_FBMSamplerScale;    
-                f += 0.06250*noised( q ); q = q*_FBMSamplerScale;    
-                f += 0.03125*noised( q );    
-                return clamp(  - p.y + _CloudHeight + _CloudScatter *f, 0.0, 1.0 );
+                f  = _FBM1*noised( q ); q = q*_FBMSamplerScale;    
+                f += _FBM2*noised( q ); q = q*_FBMSamplerScale;    
+                f += _FBM3*noised( q ); q = q*_FBMSamplerScale;    
+                f += _FBM4*noised( q ); q = q*_FBMSamplerScale;    
+                f += _FBM5*noised( q );    
+                return clamp(  GetCloudHeightDensity(p) + _CloudScatter *f, 0.0, 1.0 );
             }
             
             MarchResult MARCH5(int steps,float3 ro,float3 rd,float3 bgcol,float4 sum,float t){ 
@@ -205,11 +231,12 @@ Shader "Custom/Cloud"
             float map3( in float3 p )
             {
                 float3 q = p - GetWind()*_Time.y;    
+                q *= _CloudSize;    
                 float f;
-                f  = 0.50000*noised( q ); q = q*_FBMSamplerScale;    
-                f += 0.25000*noised( q ); q = q*_FBMSamplerScale;    
-                f += 0.12500*noised( q ); 
-                return clamp(  - p.y + _CloudHeight + _CloudScatter *f, 0.0, 1.0 );
+                f  = _FBM1*noised( q ); q = q*_FBMSamplerScale;    
+                f += _FBM2*noised( q ); q = q*_FBMSamplerScale;    
+                f += _FBM3*noised( q ); 
+                return clamp(  GetCloudHeightDensity(p) + _CloudScatter *f, 0.0, 1.0 );
             }
             
             MarchResult MARCH3(int steps,float3 ro,float3 rd,float3 bgcol,float4 sum,float t){ 
