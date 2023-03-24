@@ -23,10 +23,16 @@ Shader "Custom/Cloud"
 		
 		
 		_WindDir("_WindDir",Vector) = (1,0,1)
+		_Speed("_Speed",float) = 1
 		
 		_FBMSamplerScale("_FBMSamplerScale",float ) = 2.02
-		_MinStepDist("_MinStepDist",float ) = 0.06
-		_StepForwardPercentage("_StepForwardPercentage",float ) = 0.05
+        
+        //步进控制
+		_MinStepDist5("_MinStepDist5",float ) = 0.03
+		_StepForwardPercentage5("_StepForwardPercentage5",float ) = 0.03
+        _MinStepDist3("_MinStepDist3",float ) = 0.06
+		_StepForwardPercentage3("_StepForwardPercentage3",float ) = 0.05
+		
 		_CloudHeight("_CloudHeight",float ) = -0.5
 		_CloudScatter("_CloudScatter",float ) = 1.75
 		
@@ -64,8 +70,10 @@ Shader "Custom/Cloud"
             float3 _LowDensityCloudC;
             
             float _FBMSamplerScale;
-            float _MinStepDist;
-            float _StepForwardPercentage;
+            float _MinStepDist5;
+            float _StepForwardPercentage5;
+            float _MinStepDist3;
+            float _StepForwardPercentage3;
             float _CloudHeight;
             float _CloudScatter;
             
@@ -133,37 +141,20 @@ Shader "Custom/Cloud"
             }   
               
             float3 _WindDir;
-
-            float map4( in float3 p )
-            {    
-                float3 q = p - float3(0.0,0.1,1.0)*_Time;    
-                float f;
-                f  = 0.50000*noised( q ); q = q*2.02;    
-                f += 0.25000*noised( q ); q = q*2.03;    
-                f += 0.12500*noised( q ); q = q*2.01;   
-                f += 0.06250*noised( q );    
-                return clamp( 1.5 - p.y - 2.0 + 1.75*f, 0.0, 1.0 );
-            }
-            float map3( in float3 p )
-            {
-                float3 q = p - float3(0.0,0.1,1.0)*_Time;    
-                float f;
-                f  = 0.50000*noised( q ); q = q*2.02;    
-                f += 0.25000*noised( q ); q = q*2.03;    f += 0.12500*noise( q );    
-                return clamp( 1.5 - p.y - 2.0 + 1.75*f, 0.0, 1.0 );
-            }
-            float map2( in float3 p )
-            {    
-                float3 q = p - float3(0.0,0.1,1.0)*_Time;    
-                float f;
-                f  = 0.50000*noised( q ); 
-                q = q*2.02;    f += 0.25000*noise( q );;    
-                return clamp( 1.5 - p.y - 2.0 + 1.75*f, 0.0, 1.0 );
+            float _Speed;
+            float3 GetWind(){
+                return _WindDir * _Speed;
             }
             
-            float map5( in float3 p )
+
+            struct MarchResult {
+                float4 sum;
+                float t;  
+            };
+            
+            float map5(in float3 p )
             {    
-                float3 q = p - _WindDir*_Time.y;    
+                float3 q = p - GetWind()*_Time.y;    
                 float f;
                 f  = 0.50000*noised( q ); q = q*_FBMSamplerScale;    
                 f += 0.25000*noised( q ); q = q*_FBMSamplerScale;    
@@ -172,39 +163,22 @@ Shader "Custom/Cloud"
                 f += 0.03125*noised( q );    
                 return clamp(  - p.y + _CloudHeight + _CloudScatter *f, 0.0, 1.0 );
             }
-           
-            float mapWithLod(int lod,float3 pos){
-                if(lod == 2)
-                    return map2(pos);
-                if(lod == 3)
-                    return map3(pos);
-                if(lod == 4)
-                    return map4(pos);
-                if(lod == 5)
-                    return map5(pos);
-                else 
-                    return 0;
-            }
             
-            struct MarchResult {
-                float4 sum;
-                float t;  
-            };
-            
-            MarchResult MARCH(int steps,int lod,float3 ro,float3 rd,float3 bgcol,float4 sum,float t){ 
+            MarchResult MARCH5(int steps,float3 ro,float3 rd,float3 bgcol,float4 sum,float t){ 
                 MarchResult result;
                 for(int i=0; i<steps; i++) {
                     float3 pos = ro + t*rd; 
                     if( sum.a>0.99 ) 
                         break; 
-                    float den = mapWithLod(lod, pos );
+                    float den = map5( pos );
                     
                     if( den>0.01 ) {
                          
                         float4  col = float4( lerp( _HighDensityCloudC.rgb, _LowDensityCloudC.rgb, den ), den );
                         
                         //计算光照
-                        float ndotL = clamp((den - mapWithLod(lod,pos+0.2*_WorldSpaceLightPos0))/0.6, 0.0, 1.0 );
+                        float ndotL = clamp((den - map5(pos+0.2*_WorldSpaceLightPos0))/0.6, 0.05, 1.0 );
+                        ndotL = pow(ndotL,2);
                         float3  lit = _SunLightColor*ndotL+ _AmbientColor.rgb; 
                         col.xyz *= lit; 
                         //和背景混合
@@ -220,15 +194,63 @@ Shader "Custom/Cloud"
                         //sum += col;
                         
                     } 
-                    t += max(_MinStepDist,_StepForwardPercentage*t); 
+                    t += max(_MinStepDist5,_StepForwardPercentage5*t); 
+                }
+                result.sum = sum;
+                result.t = t;
+                return result;
+            }
+           
+            
+            float map3( in float3 p )
+            {
+                float3 q = p - GetWind()*_Time.y;    
+                float f;
+                f  = 0.50000*noised( q ); q = q*_FBMSamplerScale;    
+                f += 0.25000*noised( q ); q = q*_FBMSamplerScale;    
+                f += 0.12500*noised( q ); 
+                return clamp(  - p.y + _CloudHeight + _CloudScatter *f, 0.0, 1.0 );
+            }
+            
+            MarchResult MARCH3(int steps,float3 ro,float3 rd,float3 bgcol,float4 sum,float t){ 
+                MarchResult result;
+                for(int i=0; i<steps; i++) {
+                    float3 pos = ro + t*rd; 
+                    if( sum.a>0.99 ) 
+                        break; 
+                    float den = map3( pos );
+                    
+                    if( den>0.01 ) {
+                         
+                        float4  col = float4( lerp( _HighDensityCloudC.rgb, _LowDensityCloudC.rgb, den ), den );
+                        
+                        //计算光照
+                        float ndotL = clamp((den - map3(pos+0.2*_WorldSpaceLightPos0))/0.6, 0.05, 1.0 );
+                        ndotL = pow(ndotL,2);
+                        float3  lit = _SunLightColor*ndotL+ _AmbientColor.rgb; 
+                        col.xyz *= lit; 
+                        //和背景混合
+                        //col.xyz = lerp( col.xyz, bgcol, 1.0-exp(-0.003*t*t) );  // y = 1.0 - e^(-0.003 * t*t) 是一个顶点为 0，1 类似于倒挂的抛物线，且经过 1，0 点
+                        
+                        //对颜色值进行衰减
+                        col.a *= _AccumulateAttenuation; 
+                        //col.rgb *= col.a;
+                        
+                        sum += col*(1.0-sum.a); //越到后面比例越小，但还是不断累积
+                        
+                        //sum += float4(ndotL,ndotL,ndotL,1- sum.a);
+                        //sum += col;
+                        
+                    } 
+                    t += max(_MinStepDist3 ,_StepForwardPercentage3*t); 
                 }
                 result.sum = sum;
                 result.t = t;
                 return result;
             }
 
-
-
+ 
+        
             v2f vert (appdata v)
             {
                 v2f o;
@@ -249,8 +271,7 @@ Shader "Custom/Cloud"
                 float3 bgcol = _Color1 - rd.y*_YMultiplier*_Color2 + _BackgroundSupplement;
                 bgcol += _SunMultiplier*_SunLightColor*pow( sun, _SunPow );  
                 
-                bgcol = 0;
-                
+                //bgcol = 0;
                 
                 
                 i.uv /= i.uv.w;
@@ -260,10 +281,9 @@ Shader "Custom/Cloud"
                 MarchResult result;
                 result.sum = 0;
                 result.t = 0;
-                result = MARCH(_StepCnt,5,ro,rd,bgcol,result.sum,result.t);    
-                //result = MARCH(40,4,ro,rd,bgcol,result.sum,result.t);    
-                //result = MARCH(30,3,ro,rd,bgcol,result.sum,result.t);    
-                //result = MARCH(30,2,ro,rd,bgcol,result.sum,result.t);    
+                result = MARCH5(_StepCnt,ro,rd,bgcol,result.sum,result.t);    
+                result = MARCH3(_StepCnt,ro,rd,bgcol,result.sum,result.t);    
+              
                 float4 res = clamp( result.sum, 0.0, 1.0 );
                 return res;
                 
