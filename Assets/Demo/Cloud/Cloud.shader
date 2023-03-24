@@ -179,7 +179,7 @@ Shader "Custom/Cloud"
                         //计算光照
                         float ndotL = clamp((den - map5(pos+0.2*_WorldSpaceLightPos0))/0.6, 0.05, 1.0 );
                         ndotL = pow(ndotL,2);
-                        float3  lit = _SunLightColor*ndotL+ _AmbientColor.rgb; 
+                        float3  lit = _SunLightColor*ndotL; 
                         col.xyz *= lit; 
                         //和背景混合
                         //col.xyz = lerp( col.xyz, bgcol, 1.0-exp(-0.003*t*t) );  // y = 1.0 - e^(-0.003 * t*t) 是一个顶点为 0，1 类似于倒挂的抛物线，且经过 1，0 点
@@ -227,7 +227,7 @@ Shader "Custom/Cloud"
                         //计算光照
                         float ndotL = clamp((den - map3(pos+0.2*_WorldSpaceLightPos0))/0.6, 0.05, 1.0 );
                         ndotL = pow(ndotL,2);
-                        float3  lit = _SunLightColor*ndotL+ _AmbientColor.rgb; 
+                        float3  lit = _SunLightColor*ndotL; 
                         col.xyz *= lit; 
                         //和背景混合
                         //col.xyz = lerp( col.xyz, bgcol, 1.0-exp(-0.003*t*t) );  // y = 1.0 - e^(-0.003 * t*t) 是一个顶点为 0，1 类似于倒挂的抛物线，且经过 1，0 点
@@ -285,7 +285,7 @@ Shader "Custom/Cloud"
                 result = MARCH3(_StepCnt,ro,rd,bgcol,result.sum,result.t);    
               
                 float4 res = clamp( result.sum, 0.0, 1.0 );
-                return res;
+                return res + float4(_AmbientColor.rgb,0);
                 
                 //bgcol = bgcol*(1.0-res.w) + res.xyz;       
                 //return float4(lerp(bgcol.xyz,res.xyz,res.w),1);
