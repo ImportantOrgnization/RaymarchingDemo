@@ -1,7 +1,7 @@
 ﻿//知识点1： SDF 
 //知识点2： Distance Function
 
-Shader "Custom/Cloud"
+Shader "Custom/CloudInSphere"
 {
     Properties
 	{
@@ -34,8 +34,9 @@ Shader "Custom/Cloud"
         _MinStepDist3("_MinStepDist3",float ) = 0.06
 		_StepForwardPercentage3("_StepForwardPercentage3",float ) = 0.05
 		
-		_CloudBottom("_CloudBottom",float) = 0
-		_CloudTop("_CloudTop",float) = 1
+	    //云的半径和fadedistance
+		_CloudFade("_CloudFade",float) = 0.2
+	    _CloudRadius("_CloudRadius",float) = 1
 		_RangePurity("_RangePurity",Range(0,2)) = 1             //高度范围的纯度，越高，越界的云越少
 		_CloudScatter("_CloudScatter",Range(0,2) ) = 1.75       //云在纵向上的分散能力
 		
@@ -94,7 +95,8 @@ Shader "Custom/Cloud"
             float _FBM3;
             float _FBM4;
             float _FBM5;
-            
+
+         
 
             struct appdata
             {
@@ -161,15 +163,23 @@ Shader "Custom/Cloud"
             float3 GetWind(){
                 return _WindDir * _Speed;
             }
+
+            float sdSphere( float3 p, float s )
+            {
+                return length(p)-s; 
+            }
             
             float _CloudBottom;
             float _CloudTop;
             float _RangePurity;
+            float _CloudFade;
+            float _CloudRadius;
+            
             float GetCloudHeightDensity(float3 positionWS){
-                float y = positionWS.y;
-                float y1 = max(-_RangePurity,y - _CloudBottom);
-                float y2 = max(-_RangePurity,_CloudTop - y);
-                return min(y1,y2);   
+                float sdResult = sdSphere(positionWS,_CloudRadius);
+                sdResult = min(-sdResult,_CloudFade);
+                sdResult /= _CloudFade;
+                return  sdResult;   
             }
 
             struct MarchResult {
